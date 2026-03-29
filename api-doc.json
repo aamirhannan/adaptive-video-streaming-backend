@@ -56,6 +56,58 @@
       "404": { "message": "User not found" }
     }
   },
+  "GET - http://localhost:5000/api/admin/users": {
+    "notes": "Admin only. Lists all users (no passwords).",
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN_admin>"
+      }
+    },
+    "res": {
+      "200": {
+        "users": [
+          {
+            "userId": "64f1a2b3c4d5e6f7890abcdef",
+            "email": "user@example.com",
+            "role": "viewer",
+            "createdAt": "2026-03-30T12:00:00.000Z",
+            "updatedAt": "2026-03-30T12:00:00.000Z"
+          }
+        ]
+      },
+      "401": { "message": "Unauthorized" },
+      "403": { "message": "Forbidden" }
+    }
+  },
+  "PATCH - http://localhost:5000/api/admin/users/:userId/role": {
+    "notes": "Admin only. Updates the target user's role.",
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN_admin>"
+      },
+      "params": {
+        "userId": "target user userId"
+      },
+      "body": {
+        "role": "admin | editor | viewer"
+      }
+    },
+    "res": {
+      "200": {
+        "user": {
+          "userId": "64f1a2b3c4d5e6f7890abcdef",
+          "email": "user@example.com",
+          "role": "editor",
+          "createdAt": "2026-03-30T12:00:00.000Z",
+          "updatedAt": "2026-03-30T12:00:00.000Z"
+        }
+      },
+      "400": { "message": "userId is required | role is required and must be admin, editor, or viewer" },
+      "401": { "message": "Unauthorized" },
+      "403": { "message": "Forbidden" },
+      "404": { "message": "User not found" }
+    }
+  },
   "POST - http://localhost:5000/api/videos/upload": {
     "notes": "Roles: editor, admin. Multipart form field name: video",
     "req": {

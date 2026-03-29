@@ -1,7 +1,8 @@
-import bcrypt from 'bcryptjs';
-import { HttpError } from '../../utils/http-error.js';
-import { signAuthToken } from '../../utils/jwt.js';
-import { UserRepository } from './user.repository.js';
+import bcrypt from "bcryptjs";
+import { HttpError } from "../../utils/http-error.js";
+import { signAuthToken } from "../../utils/jwt.js";
+import type { UserRole } from "./user.model.js";
+import { UserRepository } from "./user.repository.js";
 
 type RegisterInput = {
   email: string;
@@ -93,6 +94,46 @@ export class UserService {
       userId: user.userId,
       email: user.email,
       role: user.role,
+    };
+  }
+
+  async listUsersForAdmin(): Promise<
+    Array<{
+      userId: string;
+      email: string;
+      role: UserRole;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  > {
+    const users = await this.userRepository.findAll();
+    return users.map((u) => ({
+      userId: u.userId,
+      email: u.email,
+      role: u.role,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    }));
+  }
+
+  async updateUserRoleByUserId(targetUserId: string, role: UserRole): Promise<{
+    userId: string;
+    email: string;
+    role: UserRole;
+    createdAt: Date;
+    updatedAt: Date;
+  }> {
+    const updated = await this.userRepository.updateRole(targetUserId, role);
+    if (!updated) {
+      throw new HttpError(404, "User not found");
+    }
+
+    return {
+      userId: updated.userId,
+      email: updated.email,
+      role: updated.role,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
     };
   }
 }

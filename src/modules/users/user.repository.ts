@@ -1,4 +1,4 @@
-import { UserModel, type UserDocument } from './user.model.js';
+import { UserModel, type UserDocument, type UserRole } from "./user.model.js";
 
 type CreateUserInput = {
   email: string;
@@ -22,5 +22,13 @@ export class UserRepository {
 
   async findByUserId(userId: string): Promise<UserDocument | null> {
     return UserModel.findOne({ userId }).exec();
+  }
+
+  async findAll(): Promise<UserDocument[]> {
+    return UserModel.find().sort({ createdAt: -1 }).exec();
+  }
+
+  async updateRole(userId: string, role: UserRole): Promise<UserDocument | null> {
+    return UserModel.findOneAndUpdate({ userId }, { role }, { new: true }).exec();
   }
 }
