@@ -1,6 +1,5 @@
 import cors from 'cors';
 import express from 'express';
-import { errorHandler } from './middleware/error-handler.js';
 import { userRouter } from './modules/users/user.routes.js';
 
 export const createApp = () => {
@@ -14,8 +13,6 @@ export const createApp = () => {
   });
 
   app.use('/api/auth', userRouter);
-
-  app.use(errorHandler);
 
   return app;
 };

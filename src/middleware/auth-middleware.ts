@@ -1,14 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
+import type { AuthUser } from '../types/auth.js';
 import { HttpError } from '../utils/http-error.js';
 import { verifyAuthToken } from '../utils/jwt.js';
 
-type AuthenticatedRequest = Request & {
-  user?: {
-    userId: string;
-    email: string;
-    role: 'admin' | 'editor' | 'viewer';
-  };
-};
+type AuthenticatedRequest = Request & { user?: AuthUser };
 
 export const authMiddleware = (
   req: AuthenticatedRequest,
