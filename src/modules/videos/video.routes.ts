@@ -5,14 +5,20 @@ import {
   streamAuthMiddleware,
 } from "../../middleware/auth-middleware.js";
 import { requireRoles } from "../../middleware/role-middleware.js";
+import { UserRepository } from "../users/user.repository.js";
 import { VideoController } from "./video.controller.js";
 import { VideoProcessingService } from "./video.processing.js";
 import { VideoRepository } from "./video.repository.js";
 import { VideoService } from "./video.service.js";
+import { VideoShareController } from "./video-share.controller.js";
+import { VideoShareRepository } from "./video-share.repository.js";
+import { VideoShareService } from "./video-share.service.js";
 import { uploadVideoMiddleware } from "./video.upload.js";
 
 export const createVideoRouter = (io: SocketServer) => {
   const videoRepository = new VideoRepository();
+  const videoShareRepository = new VideoShareRepository();
+  const userRepository = new UserRepository();
   const videoProcessingService = new VideoProcessingService(
     videoRepository,
     io,
@@ -20,8 +26,15 @@ export const createVideoRouter = (io: SocketServer) => {
   const videoService = new VideoService(
     videoRepository,
     videoProcessingService,
+    videoShareRepository,
+  );
+  const videoShareService = new VideoShareService(
+    videoRepository,
+    videoShareRepository,
+    userRepository,
   );
   const videoController = new VideoController(videoService);
+  const videoShareController = new VideoShareController(videoShareService);
 
   const router = Router();
 
@@ -37,6 +50,24 @@ export const createVideoRouter = (io: SocketServer) => {
     authMiddleware,
     requireRoles(["viewer", "editor", "admin"]),
     videoController.list,
+  );
+  router.post(
+    "/:videoId/shares",
+    authMiddleware,
+    requireRoles(["editor", "admin"]),
+    videoShareController.createShare,
+  );
+  router.get(
+    "/:videoId/shares",
+    authMiddleware,
+    requireRoles(["editor", "admin"]),
+    videoShareController.listShares,
+  );
+  router.delete(
+    "/:videoId/shares/:shareId",
+    authMiddleware,
+    requireRoles(["editor", "admin"]),
+    videoShareController.removeShare,
   );
   router.get(
     "/:videoId/stream",

@@ -5,8 +5,14 @@ describe('VideoService', () => {
   const repo = {
     create: vi.fn(),
     listByOwner: vi.fn(),
+    listByVideoIds: vi.fn(),
     findByVideoIdForOwner: vi.fn(),
+    findByVideoId: vi.fn(),
     updateProcessing: vi.fn(),
+  };
+  const videoShareRepo = {
+    findByVideoIdAndSharedWithUser: vi.fn(),
+    listVideoIdsSharedWithUser: vi.fn(),
   };
   const processing = {
     startProcessing: vi.fn(),
@@ -18,21 +24,33 @@ describe('VideoService', () => {
   });
 
   it('enforces owner isolation lookup', async () => {
-    repo.findByVideoIdForOwner.mockResolvedValue(null);
-    const service = new VideoService(repo as never, processing as never);
+    repo.findByVideoId.mockResolvedValue(null);
+    const service = new VideoService(
+      repo as never,
+      processing as never,
+      videoShareRepo as never,
+    );
 
     await expect(service.getOwnVideo(owner, 'v1')).rejects.toMatchObject({ statusCode: 404 });
-    expect(repo.findByVideoIdForOwner).toHaveBeenCalledWith('v1', 'u1');
+    expect(repo.findByVideoId).toHaveBeenCalledWith('v1');
   });
 
   it('blocks stream for non-ready statuses', async () => {
-    repo.findByVideoIdForOwner.mockResolvedValue({
+    repo.findByVideoId.mockResolvedValue({
+      videoId: 'v1',
+      ownerUserId: 'u1',
       status: 'processing',
       sensitivity: 'unknown',
       storagePath: 'storage/videos/a.mp4',
       mimeType: 'video/mp4',
+      variants: [],
     });
-    const service = new VideoService(repo as never, processing as never);
+    videoShareRepo.findByVideoIdAndSharedWithUser.mockResolvedValue(null);
+    const service = new VideoService(
+      repo as never,
+      processing as never,
+      videoShareRepo as never,
+    );
 
     await expect(service.getStreamPayload(owner, 'v1')).rejects.toMatchObject({ statusCode: 409 });
   });

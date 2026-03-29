@@ -49,9 +49,12 @@ Dependency direction:
 ### Videos
 
 - `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`)
-- `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`)
-- `GET /api/videos/:videoId` (owner-only)
-- `GET /api/videos/:videoId/stream?quality=240|480|720` (owner-only; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
+- `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`; returns **owned + shared-with-me** videos)
+- `GET /api/videos/:videoId` (**owner** or **shared viewer**)
+- `POST /api/videos/:videoId/shares` (roles: `editor`, `admin`; body `{ sharedWithUserId }` — target must be **viewer**; editor may share only their own videos)
+- `GET /api/videos/:videoId/shares` (roles: `editor`, `admin`; list assignments for a video)
+- `DELETE /api/videos/:videoId/shares/:shareId` (roles: `editor`, `admin`; revoke share)
+- `GET /api/videos/:videoId/stream?quality=240|480|720` (owner or shared user; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
 - `PATCH /api/videos/:videoId/status` (role: `admin`)
 
 ## Realtime events (Socket.io)

@@ -3,9 +3,15 @@ import { promises as fs } from "node:fs";
 import { HttpError } from "../../utils/http-error.js";
 import type { AuthUser } from "../../types/auth.js";
 import { VIDEO_STORAGE_DIR } from "../../config/storage.js";
-import type { Sensitivity, StreamQuality, VideoStatus } from "./video.model.js";
+import type {
+  Sensitivity,
+  StreamQuality,
+  VideoStatus,
+  VideoDocument,
+} from "./video.model.js";
 import { VideoRepository } from "./video.repository.js";
 import { VideoProcessingService } from "./video.processing.js";
+import { VideoShareRepository } from "./video-share.repository.js";
 
 type UploadInput = {
   originalName: string;
@@ -29,6 +35,7 @@ export class VideoService {
   constructor(
     private readonly videoRepository: VideoRepository,
     private readonly processingService: VideoProcessingService,
+    private readonly videoShareRepository: VideoShareRepository,
   ) {}
 
   async createAndProcessVideo(owner: AuthUser, input: UploadInput) {
@@ -50,15 +57,45 @@ export class VideoService {
     return video;
   }
 
+  private async resolveAccessibleVideo(
+    user: AuthUser,
+    videoId: string,
+  ): Promise<VideoDocument | null> {
+    const video = await this.videoRepository.findByVideoId(videoId);
+    if (!video) return null;
+    if (video.ownerUserId === user.userId) return video;
+    const share =
+      await this.videoShareRepository.findByVideoIdAndSharedWithUser(
+        videoId,
+        user.userId,
+      );
+    if (share) return video;
+    return null;
+  }
+
+  /**
+   * Owned videos plus videos shared with this user (assignment: viewer assigned videos).
+   */
   async listOwnVideos(owner: AuthUser, filters: ListFilters) {
-    return this.videoRepository.listByOwner(owner.userId, filters);
+    const owned = await this.videoRepository.listByOwner(owner.userId, filters);
+    const sharedIds =
+      await this.videoShareRepository.listVideoIdsSharedWithUser(owner.userId);
+    const shared =
+      sharedIds.length > 0
+        ? await this.videoRepository.listByVideoIds(sharedIds, filters)
+        : [];
+
+    const byId = new Map<string, VideoDocument>();
+    for (const v of owned) byId.set(v.videoId, v);
+    for (const v of shared) byId.set(v.videoId, v);
+
+    return Array.from(byId.values()).sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    );
   }
 
   async getOwnVideo(owner: AuthUser, videoId: string) {
-    const video = await this.videoRepository.findByVideoIdForOwner(
-      videoId,
-      owner.userId,
-    );
+    const video = await this.resolveAccessibleVideo(owner, videoId);
     if (!video) throw new HttpError(404, "Video not found");
     return video;
   }

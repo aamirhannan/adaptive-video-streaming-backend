@@ -45,6 +45,24 @@ export class VideoRepository {
     return VideoModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
+  async listByVideoIds(
+    videoIds: string[],
+    filters: VideoFilters,
+  ): Promise<VideoDocument[]> {
+    if (videoIds.length === 0) return [];
+
+    const query: {
+      videoId: { $in: string[] };
+      status?: VideoStatus;
+      sensitivity?: Sensitivity;
+    } = { videoId: { $in: videoIds } };
+
+    if (filters.status) query.status = filters.status;
+    if (filters.sensitivity) query.sensitivity = filters.sensitivity;
+
+    return VideoModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
   async findByVideoIdForOwner(videoId: string, ownerUserId: string): Promise<VideoDocument | null> {
     return VideoModel.findOne({ videoId, ownerUserId }).exec();
   }

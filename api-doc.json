@@ -140,7 +140,7 @@
     }
   },
   "GET - http://localhost:5000/api/videos": {
-    "notes": "Roles: viewer, editor, admin. Lists videos owned by the authenticated user.",
+    "notes": "Roles: viewer, editor, admin. Lists videos owned by the user plus videos shared with them (assigned viewers).",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>"
@@ -174,7 +174,7 @@
     }
   },
   "GET - http://localhost:5000/api/videos/:videoId": {
-    "notes": "Owner-only (JWT userId must match video ownerUserId).",
+    "notes": "Accessible if JWT user is the owner OR the video is shared with this user (viewer assignment).",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>"
@@ -227,8 +227,85 @@
       "404": { "message": "Video not found" }
     }
   },
+  "POST - http://localhost:5000/api/videos/:videoId/shares": {
+    "notes": "Roles: editor, admin. Editor may share only videos they own; admin may share any video. Target user must exist and have role viewer. Creates an assignment so that viewer can list, get metadata, and stream the video.",
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>"
+      },
+      "params": {
+        "videoId": "video document videoId"
+      },
+      "body": {
+        "sharedWithUserId": "userId of a user with role viewer"
+      }
+    },
+    "res": {
+      "201": {
+        "share": {
+          "shareId": "64f1a2b3c4d5e6f7890abcdef",
+          "videoId": "64f1a2b3c4d5e6f7890abcdef",
+          "sharedWithUserId": "64f1a2b3c4d5e6f7890abcdef",
+          "sharedByUserId": "64f1a2b3c4d5e6f7890abcdef",
+          "createdAt": "2026-03-30T12:00:00.000Z",
+          "updatedAt": "2026-03-30T12:00:00.000Z"
+        }
+      },
+      "400": { "message": "sharedWithUserId is required | Cannot share with yourself | Target user is already the video owner | Video can only be shared with users who have the viewer role" },
+      "401": { "message": "Unauthorized" },
+      "403": { "message": "Forbidden" },
+      "404": { "message": "Video not found | Target user not found" },
+      "409": { "message": "Video is already shared with this user" }
+    }
+  },
+  "GET - http://localhost:5000/api/videos/:videoId/shares": {
+    "notes": "Roles: editor, admin. Lists share records for this video. Editor only if they own the video; admin for any video.",
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>"
+      },
+      "params": {
+        "videoId": "video document videoId"
+      }
+    },
+    "res": {
+      "200": {
+        "shares": [
+          {
+            "shareId": "64f1a2b3c4d5e6f7890abcdef",
+            "videoId": "64f1a2b3c4d5e6f7890abcdef",
+            "sharedWithUserId": "64f1a2b3c4d5e6f7890abcdef",
+            "sharedByUserId": "64f1a2b3c4d5e6f7890abcdef",
+            "createdAt": "2026-03-30T12:00:00.000Z",
+            "updatedAt": "2026-03-30T12:00:00.000Z"
+          }
+        ]
+      },
+      "401": { "message": "Unauthorized" },
+      "403": { "message": "Forbidden" },
+      "404": { "message": "Video not found" }
+    }
+  },
+  "DELETE - http://localhost:5000/api/videos/:videoId/shares/:shareId": {
+    "notes": "Roles: editor, admin. Revokes a share. Editor only for videos they own; admin for any video.",
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>"
+      },
+      "params": {
+        "videoId": "video document videoId",
+        "shareId": "share document shareId"
+      }
+    },
+    "res": {
+      "204": "empty body",
+      "401": { "message": "Unauthorized" },
+      "403": { "message": "Forbidden" },
+      "404": { "message": "Video not found | Share not found" }
+    }
+  },
   "GET - http://localhost:5000/api/videos/:videoId/stream": {
-    "notes": "Owner-only. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p). Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery; HTML video uses this via Range. Auth: either Authorization Bearer OR query access_token=<JWT> (for <video src> which cannot send headers). Viewers cannot stream flagged videos. Body is raw video bytes.",
+    "notes": "Accessible if owner or video is shared with the user. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p). Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery; HTML video uses this via Range. Auth: either Authorization Bearer OR query access_token=<JWT> (for <video src> which cannot send headers). Viewers cannot stream flagged videos. Body is raw video bytes.",
     "req": {
       "headers": {
         "Authorization": "optional: Bearer <JWT_TOKEN> (omit if using access_token query)",
