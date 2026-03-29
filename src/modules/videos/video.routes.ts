@@ -1,6 +1,9 @@
 import { Router } from "express";
 import type { Server as SocketServer } from "socket.io";
-import { authMiddleware } from "../../middleware/auth-middleware.js";
+import {
+  authMiddleware,
+  streamAuthMiddleware,
+} from "../../middleware/auth-middleware.js";
 import { requireRoles } from "../../middleware/role-middleware.js";
 import { VideoController } from "./video.controller.js";
 import { VideoProcessingService } from "./video.processing.js";
@@ -21,31 +24,35 @@ export const createVideoRouter = (io: SocketServer) => {
   const videoController = new VideoController(videoService);
 
   const router = Router();
-  router.use(authMiddleware);
 
   router.post(
     "/upload",
+    authMiddleware,
     requireRoles(["editor", "admin"]),
     uploadVideoMiddleware.single("video"),
     videoController.upload,
   );
   router.get(
     "/",
+    authMiddleware,
     requireRoles(["viewer", "editor", "admin"]),
     videoController.list,
   );
   router.get(
-    "/:videoId",
-    requireRoles(["viewer", "editor", "admin"]),
-    videoController.getById,
-  );
-  router.get(
     "/:videoId/stream",
+    streamAuthMiddleware,
     requireRoles(["viewer", "editor", "admin"]),
     videoController.stream,
   );
+  router.get(
+    "/:videoId",
+    authMiddleware,
+    requireRoles(["viewer", "editor", "admin"]),
+    videoController.getById,
+  );
   router.patch(
     "/:videoId/status",
+    authMiddleware,
     requireRoles(["admin"]),
     videoController.patchStatus,
   );

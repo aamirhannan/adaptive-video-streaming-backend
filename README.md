@@ -51,7 +51,7 @@ Dependency direction:
 - `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`)
 - `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`)
 - `GET /api/videos/:videoId` (owner-only)
-- `GET /api/videos/:videoId/stream?quality=240|480|720` (owner-only; default `720`; supports **Range** requests for chunked delivery)
+- `GET /api/videos/:videoId/stream?quality=240|480|720` (owner-only; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
 - `PATCH /api/videos/:videoId/status` (role: `admin`)
 
 ## Realtime events (Socket.io)

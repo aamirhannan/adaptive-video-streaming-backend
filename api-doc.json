@@ -228,14 +228,15 @@
     }
   },
   "GET - http://localhost:5000/api/videos/:videoId/stream": {
-    "notes": "Owner-only. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p). Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery. Viewers cannot stream flagged videos. Body is raw video bytes.",
+    "notes": "Owner-only. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p). Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery; HTML video uses this via Range. Auth: either Authorization Bearer OR query access_token=<JWT> (for <video src> which cannot send headers). Viewers cannot stream flagged videos. Body is raw video bytes.",
     "req": {
       "headers": {
-        "Authorization": "Bearer <JWT_TOKEN>",
-        "Range": "optional: bytes=start-end"
+        "Authorization": "optional: Bearer <JWT_TOKEN> (omit if using access_token query)",
+        "Range": "optional: bytes=start-end (browser sends for partial content)"
       },
       "query": {
-        "quality": "optional: 240 | 480 | 720 (default 720)"
+        "quality": "optional: 240 | 480 | 720 (default 720)",
+        "access_token": "optional: JWT — same as Bearer; use for native video element streaming"
       },
       "params": {
         "videoId": "video document videoId"
