@@ -1,6 +1,6 @@
 # Adaptive Video Streaming Backend
 
-Node.js + Express + MongoDB backend with MVC layering, JWT auth, role-based access control, local video storage via Multer, simulated sensitivity processing, Socket.io progress updates, and HTTP range streaming.
+Node.js + Express + MongoDB backend with MVC layering, JWT auth, role-based access control, local video storage via Multer, **FFmpeg multi-bitrate outputs (240p / 480p / 720p)**, **ffprobe + blackdetect-style sensitivity heuristics**, Socket.io progress updates, and **HTTP range streaming** per quality.
 
 ## Setup
 
@@ -14,18 +14,29 @@ Node.js + Express + MongoDB backend with MVC layering, JWT auth, role-based acce
 3. Start development server:
    - `npm run dev`
 
+Binaries: `ffmpeg-static` and `ffprobe-static` ship platform-specific executables via npm. No system FFmpeg install is required for normal use.
+
 ## Architecture
 
 - Entry: `src/index.ts`
 - App setup: `src/app.ts`
 - Auth module: `src/modules/users/*`
 - Video module: `src/modules/videos/*`
+- FFmpeg helpers: `src/modules/videos/ffmpeg-runner.ts`
 - Middleware: `src/middleware/*`
 - Realtime: `src/realtime/socket.ts`
 
 Dependency direction:
 
 - Routes -> Controllers -> Services -> Repositories -> Models
+
+## Video processing
+
+1. Upload is stored under `storage/videos/<videoId>/original<ext>` (moved from the initial Multer temp name).
+2. **ffprobe** validates streams and duration.
+3. **Sensitivity** combines: dangerous filename keywords, missing video stream, very short duration, and high **blackdetect**-derived ratio from FFmpeg logs.
+4. **Transcoding**: three MP4 files `240.mp4`, `480.mp4`, `720.mp4` (H.264 + AAC, `+faststart` for streaming).
+5. Metadata (`variants`, `analysisSummary`) is stored on the `Video` document.
 
 ## API (v1)
 
@@ -40,7 +51,7 @@ Dependency direction:
 - `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`)
 - `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`)
 - `GET /api/videos/:videoId` (owner-only)
-- `GET /api/videos/:videoId/stream` (owner-only; supports range requests)
+- `GET /api/videos/:videoId/stream?quality=240|480|720` (owner-only; default `720`; supports **Range** requests for chunked delivery)
 - `PATCH /api/videos/:videoId/status` (role: `admin`)
 
 ## Realtime events (Socket.io)
@@ -57,9 +68,10 @@ Server emits:
 
 ## Notes
 
-- Files are stored locally in `storage/videos`.
-- The initial sensitivity classifier is deterministic filename-based logic and can be replaced by a real processing pipeline.
-- Viewer role is blocked from streaming flagged videos.
+- Processed files live under `storage/videos/<videoId>/`.
+- Legacy documents without `variants` fall back to streaming the original upload path.
+- Viewer role is blocked from streaming **flagged** videos.
+- For production-grade moderation, replace heuristics with a dedicated model or human review; FFmpeg here provides signal + transcoding.
 
 ## Testing
 

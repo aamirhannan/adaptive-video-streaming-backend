@@ -145,6 +145,27 @@
           "sensitivity": "safe",
           "progress": 100,
           "errorMessage": "optional string if failed",
+          "variants": [
+            {
+              "quality": "240",
+              "height": 240,
+              "storagePath": "<absolute path to 240.mp4>",
+              "sizeBytes": 512000
+            },
+            {
+              "quality": "480",
+              "height": 480,
+              "storagePath": "<absolute path to 480.mp4>",
+              "sizeBytes": 900000
+            },
+            {
+              "quality": "720",
+              "height": 720,
+              "storagePath": "<absolute path to 720.mp4>",
+              "sizeBytes": 1500000
+            }
+          ],
+          "analysisSummary": "durationSec=...; hasVideo=true; blackRatio=...; sensitivity=safe",
           "createdAt": "2026-03-30T12:00:00.000Z",
           "updatedAt": "2026-03-30T12:00:00.000Z"
         }
@@ -155,11 +176,14 @@
     }
   },
   "GET - http://localhost:5000/api/videos/:videoId/stream": {
-    "notes": "Owner-only. Supports HTTP Range (206 Partial Content). Viewers cannot stream flagged videos. Body is raw video bytes.",
+    "notes": "Owner-only. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p). Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery. Viewers cannot stream flagged videos. Body is raw video bytes.",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>",
         "Range": "optional: bytes=start-end"
+      },
+      "query": {
+        "quality": "optional: 240 | 480 | 720 (default 720)"
       },
       "params": {
         "videoId": "video document videoId"
@@ -185,7 +209,8 @@
       },
       "401": { "message": "Unauthorized" },
       "403": { "message": "Flagged content is restricted for viewer role | Forbidden" },
-      "404": { "message": "Video not found | Video file not found" },
+      "404": { "message": "Video not found | Video file not found | Requested quality is not available" },
+      "400": { "message": "quality must be 240, 480, or 720" },
       "409": { "message": "Video is not ready for streaming" },
       "416": { "message": "Invalid range" }
     }
@@ -226,7 +251,7 @@
     "serverEvents": {
       "video:progress": {
         "videoId": "string",
-        "phase": "uploaded | metadataValidation | sensitivityAnalysis | streamReady",
+        "phase": "layout | sensitivityAnalysis | transcode_240 | transcode_480 | transcode_720 | ...",
         "progress": "number 0-100",
         "status": "uploaded | processing | ready | flagged | failed"
       },

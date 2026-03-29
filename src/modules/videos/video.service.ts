@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import { HttpError } from "../../utils/http-error.js";
 import type { AuthUser } from "../../types/auth.js";
 import { VIDEO_STORAGE_DIR } from "../../config/storage.js";
-import type { Sensitivity, VideoStatus } from "./video.model.js";
+import type { Sensitivity, StreamQuality, VideoStatus } from "./video.model.js";
 import { VideoRepository } from "./video.repository.js";
 import { VideoProcessingService } from "./video.processing.js";
 
@@ -17,6 +17,12 @@ type UploadInput = {
 type ListFilters = {
   status?: VideoStatus;
   sensitivity?: Sensitivity;
+};
+
+const parseStreamQuality = (raw: string | undefined): StreamQuality => {
+  if (raw === undefined || raw === "" || raw === "720") return "720";
+  if (raw === "240" || raw === "480") return raw;
+  throw new HttpError(400, "quality must be 240, 480, or 720");
 };
 
 export class VideoService {
@@ -65,8 +71,15 @@ export class VideoService {
     return updated;
   }
 
-  async getStreamPayload(owner: AuthUser, videoId: string) {
+  async getStreamPayload(
+    owner: AuthUser,
+    videoId: string,
+    qualityRaw?: string | string[],
+  ) {
     const video = await this.getOwnVideo(owner, videoId);
+    const quality = parseStreamQuality(
+      Array.isArray(qualityRaw) ? qualityRaw[0] : qualityRaw,
+    );
 
     if (
       video.status === "failed" ||
@@ -80,23 +93,34 @@ export class VideoService {
       throw new HttpError(403, "Flagged content is restricted for viewer role");
     }
 
-    const fullPath = path.resolve(video.storagePath);
+    const variant = video.variants?.find((v) => v.quality === quality);
+    if (!variant && video.variants && video.variants.length > 0) {
+      throw new HttpError(404, "Requested quality is not available");
+    }
+
+    const fullPath = variant
+      ? path.resolve(variant.storagePath)
+      : path.resolve(video.storagePath);
+
     const allowedRoot = path.resolve(VIDEO_STORAGE_DIR);
     if (!fullPath.startsWith(allowedRoot)) {
       throw new HttpError(400, "Invalid video path");
     }
 
-    let stat;
+    let fileStat;
     try {
-      stat = await fs.stat(fullPath);
+      fileStat = await fs.stat(fullPath);
     } catch {
       throw new HttpError(404, "Video file not found");
     }
 
+    const mimeType = variant ? "video/mp4" : video.mimeType;
+
     return {
       fullPath,
-      fileSize: stat.size,
-      mimeType: video.mimeType,
+      fileSize: fileStat.size,
+      mimeType,
+      quality,
     };
   }
 }

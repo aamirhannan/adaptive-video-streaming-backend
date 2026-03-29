@@ -101,8 +101,15 @@ export class VideoController {
       const rawVideoId = req.params.videoId;
       const videoId = Array.isArray(rawVideoId) ? rawVideoId[0] : rawVideoId;
       if (!videoId) throw new HttpError(400, "videoId is required");
+      const rawQ = req.query.quality;
+      const quality: string | undefined =
+        typeof rawQ === "string"
+          ? rawQ
+          : Array.isArray(rawQ) && typeof rawQ[0] === "string"
+            ? rawQ[0]
+            : undefined;
       const { fullPath, fileSize, mimeType } =
-        await this.videoService.getStreamPayload(req.user, videoId);
+        await this.videoService.getStreamPayload(req.user, videoId, quality);
 
       const range = req.headers.range;
       if (!range) {

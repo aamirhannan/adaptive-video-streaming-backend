@@ -1,4 +1,4 @@
-import { VideoModel, type Sensitivity, type VideoDocument, type VideoStatus } from './video.model.js';
+import { VideoModel, type Sensitivity, type VideoDocument, type VideoStatus, type VideoVariant } from "./video.model.js";
 
 type CreateVideoInput = {
   ownerUserId: string;
@@ -14,6 +14,9 @@ type UpdateProcessingInput = {
   sensitivity?: Sensitivity;
   progress?: number;
   errorMessage?: string;
+  storagePath?: string;
+  variants?: VideoVariant[];
+  analysisSummary?: string;
 };
 
 type VideoFilters = {
@@ -23,12 +26,16 @@ type VideoFilters = {
 
 export class VideoRepository {
   async create(input: CreateVideoInput): Promise<VideoDocument> {
-    const video = new VideoModel(input);
+    const video = new VideoModel({ ...input, variants: [] });
     return video.save();
   }
 
   async listByOwner(ownerUserId: string, filters: VideoFilters): Promise<VideoDocument[]> {
-    const query: { ownerUserId: string; status?: VideoStatus; sensitivity?: Sensitivity } = {
+    const query: {
+      ownerUserId: string;
+      status?: VideoStatus;
+      sensitivity?: Sensitivity;
+    } = {
       ownerUserId,
     };
 
