@@ -1,27 +1,20 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import { createApp } from './app.js';
+import { connectDatabase } from './config/database.js';
+import { env } from './config/env.js';
 
-dotenv.config();
+const bootstrap = async () => {
+  try {
+    await connectDatabase();
+    console.log('MongoDB connected');
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+    const app = createApp();
+    app.listen(env.port, () => {
+      console.log(`Server is running on port ${env.port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
 
-app.use(cors());
-app.use(express.json());
-
-app.get('/', (req, res) => {
-  res.send('Adaptive Video Streaming API is running');
-});
-
-// Database Connection Placeholder
-/*
-mongoose.connect(process.env.MONGO_URI as string)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
-*/
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+void bootstrap();

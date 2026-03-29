@@ -1,0 +1,49 @@
+{
+  "POST - http://localhost:5000/api/auth/register": {
+    "req": {
+      "email": "test@example.com",
+      "password": "strongpassword123",
+      "role": "viewer (optional: 'admin', 'editor', 'viewer')"
+    },
+    "res": {
+      "message": "User registered successfully",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "651a2b3c4d5e6f...",
+        "email": "test@example.com",
+        "role": "viewer"
+      }
+    }
+  },
+  "POST - http://localhost:5000/api/auth/login": {
+    "req": {
+      "email": "test@example.com",
+      "password": "strongpassword123"
+    },
+    "res": {
+      "message": "Login successful",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "651a2b3c4d5e6f...",
+        "email": "test@example.com",
+        "role": "viewer"
+      }
+    }
+  },
+  "GET - http://localhost:5000/api/auth/me": {
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>"
+      }
+    },
+    "res": {
+      "user": {
+        "id": "651a2b3c4d5e6f...",
+        "email": "test@example.com",
+        "role": "viewer",
+        "createdAt": "2023-10-01T12:00:00.000Z",
+        "updatedAt": "2023-10-01T12:00:00.000Z"
+      }
+    }
+  }
+}
