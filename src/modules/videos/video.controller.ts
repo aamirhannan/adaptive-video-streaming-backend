@@ -91,6 +91,23 @@ export class VideoController {
     }
   };
 
+  remove = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      if (!req.user) throw new HttpError(401, "Unauthorized");
+      const rawVideoId = req.params.videoId;
+      const videoId = Array.isArray(rawVideoId) ? rawVideoId[0] : rawVideoId;
+      if (!videoId) throw new HttpError(400, "videoId is required");
+      await this.videoService.deleteVideo(req.user, videoId);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
   stream = async (
     req: AuthenticatedRequest,
     res: Response,

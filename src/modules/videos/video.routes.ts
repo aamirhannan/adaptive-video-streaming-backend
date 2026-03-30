@@ -87,6 +87,12 @@ export const createVideoRouter = (io: SocketServer) => {
     requireRoles(["admin"]),
     videoController.patchStatus,
   );
+  router.delete(
+    "/:videoId",
+    authMiddleware,
+    requireRoles(["editor", "admin"]),
+    videoController.remove,
+  );
 
   return router;
 };

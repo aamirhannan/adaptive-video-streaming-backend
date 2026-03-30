@@ -108,6 +108,46 @@ export class VideoService {
     return updated;
   }
 
+  async deleteVideo(actor: AuthUser, videoId: string) {
+    if (actor.role !== "editor" && actor.role !== "admin") {
+      throw new HttpError(403, "Forbidden");
+    }
+
+    const video = await this.videoRepository.findByVideoId(videoId);
+    if (!video) throw new HttpError(404, "Video not found");
+
+    if (actor.role === "editor" && video.ownerUserId !== actor.userId) {
+      throw new HttpError(403, "Forbidden");
+    }
+
+    await this.videoShareRepository.deleteByVideoId(videoId);
+
+    // Remove processed folder and legacy single-file storage paths.
+    const candidates = new Set<string>();
+    candidates.add(path.resolve(video.storagePath));
+    for (const variant of video.variants ?? []) {
+      candidates.add(path.resolve(variant.storagePath));
+    }
+    candidates.add(path.resolve(path.join(VIDEO_STORAGE_DIR, videoId)));
+
+    for (const candidate of candidates) {
+      if (!candidate.startsWith(path.resolve(VIDEO_STORAGE_DIR))) continue;
+      try {
+        const st = await fs.stat(candidate);
+        if (st.isDirectory()) {
+          await fs.rm(candidate, { recursive: true, force: true });
+        } else {
+          await fs.unlink(candidate);
+        }
+      } catch {
+        // Best-effort cleanup; continue with DB deletion.
+      }
+    }
+
+    const deleted = await this.videoRepository.deleteByVideoId(videoId);
+    if (!deleted) throw new HttpError(404, "Video not found");
+  }
+
   async getStreamPayload(
     owner: AuthUser,
     videoId: string,

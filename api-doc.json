@@ -372,6 +372,24 @@
       "404": { "message": "Video not found" }
     }
   },
+  "DELETE - http://localhost:5000/api/videos/:videoId": {
+    "notes": "Roles: editor, admin. Editor can delete only their own videos; admin can delete any. Deletion removes the video document, all share assignments for that video, and stored files (original + variants).",
+    "req": {
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>"
+      },
+      "params": {
+        "videoId": "video document videoId"
+      }
+    },
+    "res": {
+      "204": "empty body",
+      "400": { "message": "videoId is required" },
+      "401": { "message": "Unauthorized" },
+      "403": { "message": "Forbidden" },
+      "404": { "message": "Video not found" }
+    }
+  },
   "Socket.io - realtime (same host as API, port as HTTP)": {
     "notes": "Connect with JWT in handshake auth: { token: '<JWT>' }. Server joins socket to room userId.",
     "clientEvents": {

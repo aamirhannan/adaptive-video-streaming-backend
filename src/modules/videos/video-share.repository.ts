@@ -43,4 +43,9 @@ export class VideoShareRepository {
     const res = await VideoShareModel.deleteOne({ shareId }).exec();
     return res.deletedCount === 1;
   }
+
+  async deleteByVideoId(videoId: string): Promise<number> {
+    const res = await VideoShareModel.deleteMany({ videoId }).exec();
+    return res.deletedCount ?? 0;
+  }
 }

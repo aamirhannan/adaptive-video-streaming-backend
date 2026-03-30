@@ -74,4 +74,8 @@ export class VideoRepository {
   async updateProcessing(videoId: string, updates: UpdateProcessingInput): Promise<VideoDocument | null> {
     return VideoModel.findOneAndUpdate({ videoId }, updates, { new: true }).exec();
   }
+
+  async deleteByVideoId(videoId: string): Promise<VideoDocument | null> {
+    return VideoModel.findOneAndDelete({ videoId }).exec();
+  }
 }
