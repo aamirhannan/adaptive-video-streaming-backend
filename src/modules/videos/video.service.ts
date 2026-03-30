@@ -66,6 +66,7 @@ export class VideoService {
   ): Promise<VideoDocument | null> {
     const video = await this.videoRepository.findByVideoId(videoId);
     if (!video) return null;
+    if (user.role === "admin") return video;
     if (video.ownerUserId === user.userId) return video;
     const share =
       await this.videoShareRepository.findByVideoIdAndSharedWithUser(
@@ -77,9 +78,13 @@ export class VideoService {
   }
 
   /**
-   * Owned videos plus videos shared with this user (assignment: viewer assigned videos).
+   * Admin: all videos. Others: owned plus videos shared with this user.
    */
   async listOwnVideos(owner: AuthUser, filters: ListFilters) {
+    if (owner.role === "admin") {
+      return this.videoRepository.listAll(filters);
+    }
+
     const owned = await this.videoRepository.listByOwner(owner.userId, filters);
     const sharedIds =
       await this.videoShareRepository.listVideoIdsSharedWithUser(owner.userId);

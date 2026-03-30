@@ -5,6 +5,7 @@ describe('VideoService', () => {
   const repo = {
     create: vi.fn(),
     listByOwner: vi.fn(),
+    listAll: vi.fn(),
     listByVideoIds: vi.fn(),
     findByVideoIdForOwner: vi.fn(),
     findByVideoId: vi.fn(),
@@ -61,5 +62,47 @@ describe('VideoService', () => {
     );
 
     await expect(service.getStreamPayload(owner, 'v1')).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('admin can access any video by id', async () => {
+    const admin = { userId: 'admin1', email: 'a@x.com', role: 'admin' as const };
+    const doc = {
+      videoId: 'v2',
+      ownerUserId: 'editor1',
+      status: 'ready',
+      sensitivity: 'safe' as const,
+      storagePath: 'videos/v2/720.mp4',
+      mimeType: 'video/mp4',
+      variants: [{ quality: '720' as const, height: 720, storagePath: 'videos/v2/720.mp4', sizeBytes: 100 }],
+    };
+    repo.findByVideoId.mockResolvedValue(doc);
+    objectStorage.isConfigured.mockReturnValue(true);
+    objectStorage.statObject.mockResolvedValue({ sizeBytes: 100, contentType: 'video/mp4' });
+    const service = new VideoService(
+      repo as never,
+      processing as never,
+      videoShareRepo as never,
+      objectStorage as never,
+    );
+
+    const got = await service.getOwnVideo(admin, 'v2');
+    expect(got.videoId).toBe('v2');
+    expect(videoShareRepo.findByVideoIdAndSharedWithUser).not.toHaveBeenCalled();
+  });
+
+  it('admin list uses listAll', async () => {
+    const admin = { userId: 'admin1', email: 'a@x.com', role: 'admin' as const };
+    repo.listAll.mockResolvedValue([{ videoId: 'a' }]);
+    const service = new VideoService(
+      repo as never,
+      processing as never,
+      videoShareRepo as never,
+      objectStorage as never,
+    );
+
+    const list = await service.listOwnVideos(admin, {});
+    expect(list).toEqual([{ videoId: 'a' }]);
+    expect(repo.listAll).toHaveBeenCalledWith({});
+    expect(repo.listByOwner).not.toHaveBeenCalled();
   });
 });

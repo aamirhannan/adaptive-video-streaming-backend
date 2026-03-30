@@ -37,7 +37,7 @@ Dependency direction:
 
 ## Video processing
 
-1. Upload lands in a temporary local workspace and is then moved into Fly Tigris object storage under `videos/<videoId>/...`.
+1. Upload lands in a temporary local workspace; after transcoding, only compressed renditions (`240.mp4`, `480.mp4`, `720.mp4`) are stored in Fly Tigris under `videos/<videoId>/...` (the original file is not kept remotely).
 2. **ffprobe** validates streams and duration.
 3. **Sensitivity** combines: dangerous filename keywords, missing video stream, very short duration, and high **blackdetect**-derived ratio from FFmpeg logs.
 4. **Transcoding**: three MP4 files `240.mp4`, `480.mp4`, `720.mp4` (H.264 + AAC, `+faststart` for streaming).
@@ -55,12 +55,12 @@ Dependency direction:
 ### Videos
 
 - `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`; max size **20MB**)
-- `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`; returns **owned + shared-with-me** videos)
-- `GET /api/videos/:videoId` (**owner** or **shared viewer**)
+- `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`; **admin** returns all videos; others get **owned + shared-with-me**)
+- `GET /api/videos/:videoId` (**admin**, **owner**, or **shared viewer**)
 - `POST /api/videos/:videoId/shares` (roles: `editor`, `admin`; body accepts `sharedWith` as **userId or email**; legacy `sharedWithUserId` and `sharedWithEmail` are also accepted; target must be **viewer**; editor may share only their own videos)
 - `GET /api/videos/:videoId/shares` (roles: `editor`, `admin`; list assignments for a video)
 - `DELETE /api/videos/:videoId/shares/:shareId` (roles: `editor`, `admin`; revoke share)
-- `GET /api/videos/:videoId/stream?quality=240|480|720` (owner or shared user; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
+- `GET /api/videos/:videoId/stream?quality=240|480|720` (admin, owner, or shared user; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
 - `PATCH /api/videos/:videoId/status` (role: `admin`)
 - `DELETE /api/videos/:videoId` (roles: `editor`, `admin`; editor can delete only own videos; removes video document, related shares, and stored objects)
 

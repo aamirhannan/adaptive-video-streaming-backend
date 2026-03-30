@@ -75,10 +75,9 @@ export class VideoProcessingService {
       await rename(workingPath, canonicalOriginal);
       workingPath = canonicalOriginal;
 
-      const originalKey = `${keyPrefix}/original${ext}`;
-
+      // Keep local path in DB while processing; only compressed variants are uploaded to Tigris.
       await this.videoRepository.updateProcessing(videoId, {
-        storagePath: originalKey,
+        storagePath: workingPath,
         progress: 10,
       });
 
@@ -142,12 +141,6 @@ export class VideoProcessingService {
         });
       }
 
-      await this.objectStorage.uploadFromFile(
-        originalKey,
-        workingPath,
-        video.mimeType || "video/mp4",
-      );
-      uploadedKeys.push(originalKey);
       for (const variant of variants) {
         const outFile = path.join(processingDir, `${variant.quality}.mp4`);
         await this.objectStorage.uploadFromFile(
@@ -165,6 +158,8 @@ export class VideoProcessingService {
         progress: 100,
         variants,
         sensitivity,
+        // Canonical reference: highest quality MP4 only (original is not stored remotely).
+        storagePath: `${keyPrefix}/720.mp4`,
       });
 
       this.io.to(ownerUserId).emit("video:status", {

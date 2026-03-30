@@ -125,7 +125,7 @@
           "ownerEmail": "editor@example.com",
           "originalName": "clip.mp4",
           "storedFileName": "1730000000000-123456789.mp4",
-          "storagePath": "videos/<videoId>/original.<ext> (Tigris object key)",
+          "storagePath": "<local temp path during upload/processing; after ready: videos/<videoId>/720.mp4 in Tigris, originals not stored>",
           "mimeType": "video/mp4",
           "sizeBytes": 1048576,
           "status": "uploaded",
@@ -142,7 +142,7 @@
     }
   },
   "GET - http://localhost:5000/api/videos": {
-    "notes": "Roles: viewer, editor, admin. Lists videos owned by the user plus videos shared with them (assigned viewers).",
+    "notes": "Roles: viewer, editor, admin. Admin lists all videos in the system. Viewer/editor list videos they own plus videos shared with them (assigned viewers).",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>"
@@ -161,7 +161,7 @@
             "ownerEmail": "editor@example.com",
             "originalName": "clip.mp4",
             "storedFileName": "1730000000000-123456789.mp4",
-            "storagePath": "<path>",
+            "storagePath": "videos/<videoId>/720.mp4",
             "mimeType": "video/mp4",
             "sizeBytes": 1048576,
             "status": "ready",
@@ -177,7 +177,7 @@
     }
   },
   "GET - http://localhost:5000/api/videos/:videoId": {
-    "notes": "Accessible if JWT user is the owner OR the video is shared with this user (viewer assignment).",
+    "notes": "Accessible if JWT user is admin, owner, OR the video is shared with this user (viewer assignment).",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>"
@@ -194,7 +194,7 @@
           "ownerEmail": "editor@example.com",
           "originalName": "clip.mp4",
           "storedFileName": "1730000000000-123456789.mp4",
-          "storagePath": "<path>",
+          "storagePath": "videos/<videoId>/720.mp4",
           "mimeType": "video/mp4",
           "sizeBytes": 1048576,
           "status": "ready",
@@ -311,7 +311,7 @@
     }
   },
   "GET - http://localhost:5000/api/videos/:videoId/stream": {
-    "notes": "Accessible if owner or video is shared with the user. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p) stored in Fly Tigris object storage. Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery; HTML video uses this via Range. Auth: either Authorization Bearer OR query access_token=<JWT> (for <video src> which cannot send headers). Viewers cannot stream flagged videos. Body is raw video bytes.",
+    "notes": "Accessible if admin, owner, or video is shared with the user. After processing, streams one of three FFmpeg-encoded MP4 renditions (240p, 480p, 720p) stored in Fly Tigris object storage. Default quality=720. Supports HTTP Range (206 Partial Content) for chunked delivery; HTML video uses this via Range. Auth: either Authorization Bearer OR query access_token=<JWT> (for <video src> which cannot send headers). Viewers cannot stream flagged videos. Body is raw video bytes.",
     "req": {
       "headers": {
         "Authorization": "optional: Bearer <JWT_TOKEN> (omit if using access_token query)",
@@ -379,7 +379,7 @@
     }
   },
   "DELETE - http://localhost:5000/api/videos/:videoId": {
-    "notes": "Roles: editor, admin. Editor can delete only their own videos; admin can delete any. Deletion removes the video document, all share assignments for that video, and stored files (original + variants) from object storage.",
+    "notes": "Roles: editor, admin. Editor can delete only their own videos; admin can delete any. Deletion removes the video document, all share assignments for that video, and stored transcoded objects (240/480/720) from object storage.",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>"

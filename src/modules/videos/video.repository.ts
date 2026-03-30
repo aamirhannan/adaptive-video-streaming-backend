@@ -64,6 +64,17 @@ export class VideoRepository {
     return VideoModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
+  /** All videos (admin library). Optional status/sensitivity filters. */
+  async listAll(filters: VideoFilters): Promise<VideoDocument[]> {
+    const query: {
+      status?: VideoStatus;
+      sensitivity?: Sensitivity;
+    } = {};
+    if (filters.status) query.status = filters.status;
+    if (filters.sensitivity) query.sensitivity = filters.sensitivity;
+    return VideoModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
   async findByVideoIdForOwner(videoId: string, ownerUserId: string): Promise<VideoDocument | null> {
     return VideoModel.findOne({ videoId, ownerUserId }).exec();
   }
