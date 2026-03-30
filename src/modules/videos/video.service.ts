@@ -42,6 +42,7 @@ export class VideoService {
     const storagePath = path.join(VIDEO_STORAGE_DIR, input.storedFileName);
     const video = await this.videoRepository.create({
       ownerUserId: owner.userId,
+      ownerEmail: owner.email,
       originalName: input.originalName,
       storedFileName: input.storedFileName,
       storagePath,

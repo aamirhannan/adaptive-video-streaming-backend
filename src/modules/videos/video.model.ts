@@ -20,6 +20,7 @@ export interface VideoVariant {
 export interface VideoDocument {
   videoId: string;
   ownerUserId: string;
+  ownerEmail: string;
   originalName: string;
   storedFileName: string;
   storagePath: string;
@@ -58,6 +59,7 @@ const videoSchema = new Schema<VideoDocument>(
       default: () => new mongoose.Types.ObjectId().toHexString(),
     },
     ownerUserId: { type: String, required: true, index: true },
+    ownerEmail: { type: String, required: true, lowercase: true, trim: true },
     originalName: { type: String, required: true },
     storedFileName: { type: String, required: true },
     storagePath: { type: String, required: true },

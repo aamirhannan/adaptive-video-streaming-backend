@@ -24,6 +24,13 @@ export class UserRepository {
     return UserModel.findOne({ userId }).exec();
   }
 
+  async findByUserIdOrEmail(identifier: string): Promise<UserDocument | null> {
+    const normalized = identifier.trim();
+    const byUserId = await UserModel.findOne({ userId: normalized }).exec();
+    if (byUserId) return byUserId;
+    return UserModel.findOne({ email: normalized.toLowerCase() }).exec();
+  }
+
   async findAll(): Promise<UserDocument[]> {
     return UserModel.find().sort({ createdAt: -1 }).exec();
   }

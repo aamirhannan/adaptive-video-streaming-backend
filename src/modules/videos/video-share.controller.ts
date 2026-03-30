@@ -16,15 +16,26 @@ export class VideoShareController {
       const rawVideoId = req.params.videoId;
       const videoId = Array.isArray(rawVideoId) ? rawVideoId[0] : rawVideoId;
       if (!videoId) throw new HttpError(400, "videoId is required");
-      const sharedWithUserId = req.body?.sharedWithUserId as string | undefined;
-      if (!sharedWithUserId || typeof sharedWithUserId !== "string") {
-        throw new HttpError(400, "sharedWithUserId is required");
+      const body = (req.body ?? {}) as {
+        sharedWith?: unknown;
+        sharedWithUserId?: unknown;
+        sharedWithEmail?: unknown;
+      };
+      const sharedWithRaw =
+        (typeof body.sharedWith === "string" && body.sharedWith) ||
+        (typeof body.sharedWithUserId === "string" && body.sharedWithUserId) ||
+        (typeof body.sharedWithEmail === "string" && body.sharedWithEmail);
+      if (!sharedWithRaw) {
+        throw new HttpError(
+          400,
+          "sharedWith is required (userId or email)",
+        );
       }
 
       const share = await this.videoShareService.createShare(
         req.user,
         videoId,
-        sharedWithUserId.trim(),
+        sharedWithRaw.trim(),
       );
       res.status(201).json({ share });
     } catch (error) {

@@ -2,6 +2,7 @@ import { VideoModel, type Sensitivity, type VideoDocument, type VideoStatus, typ
 
 type CreateVideoInput = {
   ownerUserId: string;
+  ownerEmail: string;
   originalName: string;
   storedFileName: string;
   storagePath: string;

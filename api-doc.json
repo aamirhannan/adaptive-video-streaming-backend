@@ -122,6 +122,7 @@
         "video": {
           "videoId": "64f1a2b3c4d5e6f7890abcdef",
           "ownerUserId": "64f1a2b3c4d5e6f7890abcdef",
+          "ownerEmail": "editor@example.com",
           "originalName": "clip.mp4",
           "storedFileName": "1730000000000-123456789.mp4",
           "storagePath": "<absolute path under storage/videos>",
@@ -156,6 +157,7 @@
           {
             "videoId": "64f1a2b3c4d5e6f7890abcdef",
             "ownerUserId": "64f1a2b3c4d5e6f7890abcdef",
+            "ownerEmail": "editor@example.com",
             "originalName": "clip.mp4",
             "storedFileName": "1730000000000-123456789.mp4",
             "storagePath": "<path>",
@@ -188,6 +190,7 @@
         "video": {
           "videoId": "64f1a2b3c4d5e6f7890abcdef",
           "ownerUserId": "64f1a2b3c4d5e6f7890abcdef",
+          "ownerEmail": "editor@example.com",
           "originalName": "clip.mp4",
           "storedFileName": "1730000000000-123456789.mp4",
           "storagePath": "<path>",
@@ -228,7 +231,7 @@
     }
   },
   "POST - http://localhost:5000/api/videos/:videoId/shares": {
-    "notes": "Roles: editor, admin. Editor may share only videos they own; admin may share any video. Target user must exist and have role viewer. Creates an assignment so that viewer can list, get metadata, and stream the video.",
+    "notes": "Roles: editor, admin. Editor may share only videos they own; admin may share any video. Target user must exist and have role viewer. Request accepts either userId or email for the target viewer. Creates an assignment so that viewer can list, get metadata, and stream the video.",
     "req": {
       "headers": {
         "Authorization": "Bearer <JWT_TOKEN>"
@@ -237,7 +240,9 @@
         "videoId": "video document videoId"
       },
       "body": {
-        "sharedWithUserId": "userId of a user with role viewer"
+        "sharedWith": "required: target viewer identifier (userId OR email)",
+        "sharedWithUserId": "optional legacy field: target viewer userId",
+        "sharedWithEmail": "optional legacy field: target viewer email"
       }
     },
     "res": {
@@ -251,7 +256,7 @@
           "updatedAt": "2026-03-30T12:00:00.000Z"
         }
       },
-      "400": { "message": "sharedWithUserId is required | Cannot share with yourself | Target user is already the video owner | Video can only be shared with users who have the viewer role" },
+      "400": { "message": "sharedWith is required (userId or email) | Cannot share with yourself | Target user is already the video owner | Video can only be shared with users who have the viewer role" },
       "401": { "message": "Unauthorized" },
       "403": { "message": "Forbidden" },
       "404": { "message": "Video not found | Target user not found" },

@@ -20,7 +20,7 @@ export class VideoShareService {
   async createShare(
     actor: AuthUser,
     videoId: string,
-    sharedWithUserId: string,
+    sharedWith: string,
   ) {
     if (actor.role !== "editor" && actor.role !== "admin") {
       throw new HttpError(403, "Forbidden");
@@ -31,22 +31,27 @@ export class VideoShareService {
 
     this.assertCanManageVideo(actor, video.ownerUserId);
 
-    if (sharedWithUserId === actor.userId) {
-      throw new HttpError(400, "Cannot share with yourself");
-    }
-    if (sharedWithUserId === video.ownerUserId) {
-      throw new HttpError(400, "Target user is already the video owner");
+    const identifier = sharedWith.trim();
+    if (!identifier) {
+      throw new HttpError(400, "sharedWith is required");
     }
 
-    const target = await this.userRepository.findByUserId(sharedWithUserId);
+    if (identifier === actor.userId || identifier.toLowerCase() === actor.email.toLowerCase()) {
+      throw new HttpError(400, "Cannot share with yourself");
+    }
+
+    const target = await this.userRepository.findByUserIdOrEmail(identifier);
     if (!target) throw new HttpError(404, "Target user not found");
+    if (target.userId === video.ownerUserId) {
+      throw new HttpError(400, "Target user is already the video owner");
+    }
     if (target.role !== "viewer") {
       throw new HttpError(400, "Video can only be shared with users who have the viewer role");
     }
 
     const existing = await this.videoShareRepository.findByVideoIdAndSharedWithUser(
       videoId,
-      sharedWithUserId,
+      target.userId,
     );
     if (existing) {
       throw new HttpError(409, "Video is already shared with this user");
@@ -54,7 +59,7 @@ export class VideoShareService {
 
     return this.videoShareRepository.create({
       videoId,
-      sharedWithUserId,
+      sharedWithUserId: target.userId,
       sharedByUserId: actor.userId,
     });
   }
