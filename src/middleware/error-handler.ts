@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import multer from "multer";
 import { HttpError } from '../utils/http-error.js';
 
 export const errorHandler = (
@@ -9,6 +10,11 @@ export const errorHandler = (
 ): void => {
   if (err instanceof HttpError) {
     res.status(err.statusCode).json({ message: err.message });
+    return;
+  }
+
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    res.status(413).json({ message: "Video file size must be 20MB or less" });
     return;
   }
 

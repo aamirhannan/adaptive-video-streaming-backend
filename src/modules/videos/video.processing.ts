@@ -1,8 +1,9 @@
-import { mkdir, rename, stat } from "node:fs/promises";
+import { mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import type { Server as SocketServer } from "socket.io";
-import { VIDEO_STORAGE_DIR } from "../../config/storage.js";
+import { PROCESSING_TMP_DIR } from "../../config/storage.js";
 import type { Sensitivity, VideoStatus, VideoVariant } from "./video.model.js";
+import { ObjectStorageService } from "./object-storage.js";
 import { VideoRepository } from "./video.repository.js";
 import {
   estimateBlackContentRatio,
@@ -19,6 +20,7 @@ export class VideoProcessingService {
   constructor(
     private readonly videoRepository: VideoRepository,
     private readonly io: SocketServer,
+    private readonly objectStorage: ObjectStorageService,
   ) {}
 
   startProcessing(videoId: string, ownerUserId: string, originalName: string): void {
@@ -46,8 +48,12 @@ export class VideoProcessingService {
     if (!video) return;
 
     let workingPath = video.storagePath;
+    const keyPrefix = `videos/${videoId}`;
+    const uploadedKeys: string[] = [];
+    const processingDir = path.join(PROCESSING_TMP_DIR, videoId);
 
     try {
+      this.objectStorage.assertConfigured();
       await this.videoRepository.updateProcessing(videoId, {
         status: "processing",
         progress: 5,
@@ -59,19 +65,20 @@ export class VideoProcessingService {
         status: "processing",
       });
 
-      const dir = path.join(VIDEO_STORAGE_DIR, videoId);
-      await mkdir(dir, { recursive: true });
+      await mkdir(processingDir, { recursive: true });
 
       const ext =
         path.extname(originalName) ||
         path.extname(video.storedFileName) ||
         ".mp4";
-      const canonicalOriginal = path.join(dir, `original${ext}`);
+      const canonicalOriginal = path.join(processingDir, `original${ext}`);
       await rename(workingPath, canonicalOriginal);
       workingPath = canonicalOriginal;
 
+      const originalKey = `${keyPrefix}/original${ext}`;
+
       await this.videoRepository.updateProcessing(videoId, {
-        storagePath: workingPath,
+        storagePath: originalKey,
         progress: 10,
       });
 
@@ -111,13 +118,14 @@ export class VideoProcessingService {
       const variants: VideoVariant[] = [];
       let step = 0;
       for (const q of QUALITIES) {
-        const outFile = path.join(dir, `${q}.mp4`);
+        const outFile = path.join(processingDir, `${q}.mp4`);
         await transcodeToQuality(workingPath, outFile, q);
         const st = await stat(outFile);
+        const key = `${keyPrefix}/${q}.mp4`;
         variants.push({
           quality: q,
           height: Number(q),
-          storagePath: outFile,
+          storagePath: key,
           sizeBytes: st.size,
         });
         step += 1;
@@ -134,6 +142,22 @@ export class VideoProcessingService {
         });
       }
 
+      await this.objectStorage.uploadFromFile(
+        originalKey,
+        workingPath,
+        video.mimeType || "video/mp4",
+      );
+      uploadedKeys.push(originalKey);
+      for (const variant of variants) {
+        const outFile = path.join(processingDir, `${variant.quality}.mp4`);
+        await this.objectStorage.uploadFromFile(
+          variant.storagePath,
+          outFile,
+          "video/mp4",
+        );
+        uploadedKeys.push(variant.storagePath);
+      }
+
       const finalStatus: VideoStatus = sensitivity === "flagged" ? "flagged" : "ready";
 
       await this.videoRepository.updateProcessing(videoId, {
@@ -148,7 +172,20 @@ export class VideoProcessingService {
         status: finalStatus,
         sensitivity,
       });
+      await rm(processingDir, { recursive: true, force: true });
     } catch {
+      for (const key of uploadedKeys) {
+        try {
+          await this.objectStorage.deleteObject(key);
+        } catch {
+          // Best effort cleanup for partially uploaded objects.
+        }
+      }
+      try {
+        await rm(processingDir, { recursive: true, force: true });
+      } catch {
+        // Best effort cleanup for temp workspace.
+      }
       await this.videoRepository.updateProcessing(videoId, {
         status: "failed",
         progress: 100,

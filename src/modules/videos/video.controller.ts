@@ -125,10 +125,30 @@ export class VideoController {
           : Array.isArray(rawQ) && typeof rawQ[0] === "string"
             ? rawQ[0]
             : undefined;
-      const { fullPath, fileSize, mimeType } =
+      const streamPayload =
         await this.videoService.getStreamPayload(req.user, videoId, quality);
 
       const range = req.headers.range;
+      if (streamPayload.source === "object") {
+        const objectResponse = await this.videoService.getObjectStreamPayload(
+          streamPayload.objectKey,
+          range,
+        );
+        const hasRange = Boolean(range && objectResponse.contentRange);
+        res.status(hasRange ? 206 : 200);
+        res.set({
+          "Content-Length": objectResponse.contentLength,
+          "Content-Type": objectResponse.contentType,
+          "Accept-Ranges": "bytes",
+          ...(objectResponse.contentRange
+            ? { "Content-Range": objectResponse.contentRange }
+            : {}),
+        });
+        objectResponse.body.pipe(res);
+        return;
+      }
+
+      const { fullPath, fileSize, mimeType } = streamPayload;
       if (!range) {
         res.status(200);
         res.set({

@@ -1,6 +1,6 @@
 # Adaptive Video Streaming Backend
 
-Node.js + Express + MongoDB backend with MVC layering, JWT auth, role-based access control, local video storage via Multer, **FFmpeg multi-bitrate outputs (240p / 480p / 720p)**, **ffprobe + blackdetect-style sensitivity heuristics**, Socket.io progress updates, and **HTTP range streaming** per quality.
+Node.js + Express + MongoDB backend with MVC layering, JWT auth, role-based access control, Multer uploads with Fly Tigris object storage, **FFmpeg multi-bitrate outputs (240p / 480p / 720p)**, **ffprobe + blackdetect-style sensitivity heuristics**, Socket.io progress updates, and **HTTP range streaming** per quality.
 
 ## Setup
 
@@ -11,6 +11,11 @@ Node.js + Express + MongoDB backend with MVC layering, JWT auth, role-based acce
    - `JWT_SECRET=<long-random-secret>`
    - `JWT_EXPIRES_IN=1d`
    - `PORT=5000`
+   - `TIGRIS_ENDPOINT=<https://...>`
+   - `TIGRIS_BUCKET=<bucket-name>`
+   - `TIGRIS_ACCESS_KEY_ID=<access-key-id>`
+   - `TIGRIS_SECRET_ACCESS_KEY=<secret-access-key>`
+   - `TIGRIS_REGION=auto` (optional)
 3. Start development server:
    - `npm run dev`
 
@@ -32,11 +37,11 @@ Dependency direction:
 
 ## Video processing
 
-1. Upload is stored under `storage/videos/<videoId>/original<ext>` (moved from the initial Multer temp name).
+1. Upload lands in a temporary local workspace and is then moved into Fly Tigris object storage under `videos/<videoId>/...`.
 2. **ffprobe** validates streams and duration.
 3. **Sensitivity** combines: dangerous filename keywords, missing video stream, very short duration, and high **blackdetect**-derived ratio from FFmpeg logs.
 4. **Transcoding**: three MP4 files `240.mp4`, `480.mp4`, `720.mp4` (H.264 + AAC, `+faststart` for streaming).
-5. Metadata (`variants`, `analysisSummary`) is stored on the `Video` document.
+5. Metadata (`variants`, `analysisSummary`) is stored on the `Video` document; `storagePath` fields hold object keys.
 6. Video owner metadata includes both `ownerUserId` and `ownerEmail` for easier frontend display and audit context.
 
 ## API (v1)
@@ -49,7 +54,7 @@ Dependency direction:
 
 ### Videos
 
-- `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`)
+- `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`; max size **20MB**)
 - `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`; returns **owned + shared-with-me** videos)
 - `GET /api/videos/:videoId` (**owner** or **shared viewer**)
 - `POST /api/videos/:videoId/shares` (roles: `editor`, `admin`; body accepts `sharedWith` as **userId or email**; legacy `sharedWithUserId` and `sharedWithEmail` are also accepted; target must be **viewer**; editor may share only their own videos)
@@ -57,7 +62,7 @@ Dependency direction:
 - `DELETE /api/videos/:videoId/shares/:shareId` (roles: `editor`, `admin`; revoke share)
 - `GET /api/videos/:videoId/stream?quality=240|480|720` (owner or shared user; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
 - `PATCH /api/videos/:videoId/status` (role: `admin`)
-- `DELETE /api/videos/:videoId` (roles: `editor`, `admin`; editor can delete only own videos; removes video document, related shares, and stored files)
+- `DELETE /api/videos/:videoId` (roles: `editor`, `admin`; editor can delete only own videos; removes video document, related shares, and stored objects)
 
 ## Realtime events (Socket.io)
 
@@ -73,11 +78,19 @@ Server emits:
 
 ## Notes
 
-- Processed files live under `storage/videos/<videoId>/`.
-- Legacy documents without `variants` fall back to streaming the original upload path.
+- Local disk is used only as temporary processing workspace; canonical media files live in Fly Tigris.
+- Legacy documents with local file paths continue to stream via local fallback.
 - Viewer role is blocked from streaming **flagged** videos.
 - Share assignment always resolves to a viewer account, looked up by either userId or email.
 - For production-grade moderation, replace heuristics with a dedicated model or human review; FFmpeg here provides signal + transcoding.
+
+## Fly deployment notes
+
+- Keep at least one machine warm (`auto_stop_machines = "off"`, `min_machines_running = 1`) to avoid cold starts.
+- Set Tigris credentials as Fly secrets:
+  - `fly secrets set TIGRIS_ENDPOINT=... TIGRIS_BUCKET=... TIGRIS_ACCESS_KEY_ID=... TIGRIS_SECRET_ACCESS_KEY=...`
+- Optional:
+  - `fly secrets set TIGRIS_REGION=auto`
 
 ## Testing
 

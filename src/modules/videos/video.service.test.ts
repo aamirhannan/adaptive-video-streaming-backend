@@ -17,6 +17,12 @@ describe('VideoService', () => {
   const processing = {
     startProcessing: vi.fn(),
   };
+  const objectStorage = {
+    isConfigured: vi.fn(),
+    statObject: vi.fn(),
+    getObjectStream: vi.fn(),
+    deleteByPrefix: vi.fn(),
+  };
   const owner = { userId: 'u1', email: 'u@x.com', role: 'viewer' as const };
 
   beforeEach(() => {
@@ -29,6 +35,7 @@ describe('VideoService', () => {
       repo as never,
       processing as never,
       videoShareRepo as never,
+      objectStorage as never,
     );
 
     await expect(service.getOwnVideo(owner, 'v1')).rejects.toMatchObject({ statusCode: 404 });
@@ -50,6 +57,7 @@ describe('VideoService', () => {
       repo as never,
       processing as never,
       videoShareRepo as never,
+      objectStorage as never,
     );
 
     await expect(service.getStreamPayload(owner, 'v1')).rejects.toMatchObject({ statusCode: 409 });

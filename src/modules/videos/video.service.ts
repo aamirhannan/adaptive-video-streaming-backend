@@ -2,7 +2,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { HttpError } from "../../utils/http-error.js";
 import type { AuthUser } from "../../types/auth.js";
-import { VIDEO_STORAGE_DIR } from "../../config/storage.js";
+import { UPLOAD_TMP_DIR, VIDEO_STORAGE_DIR } from "../../config/storage.js";
 import type {
   Sensitivity,
   StreamQuality,
@@ -12,6 +12,7 @@ import type {
 import { VideoRepository } from "./video.repository.js";
 import { VideoProcessingService } from "./video.processing.js";
 import { VideoShareRepository } from "./video-share.repository.js";
+import { ObjectStorageService } from "./object-storage.js";
 
 type UploadInput = {
   originalName: string;
@@ -36,10 +37,11 @@ export class VideoService {
     private readonly videoRepository: VideoRepository,
     private readonly processingService: VideoProcessingService,
     private readonly videoShareRepository: VideoShareRepository,
+    private readonly objectStorage: ObjectStorageService,
   ) {}
 
   async createAndProcessVideo(owner: AuthUser, input: UploadInput) {
-    const storagePath = path.join(VIDEO_STORAGE_DIR, input.storedFileName);
+    const storagePath = path.join(UPLOAD_TMP_DIR, input.storedFileName);
     const video = await this.videoRepository.create({
       ownerUserId: owner.userId,
       ownerEmail: owner.email,
@@ -123,11 +125,24 @@ export class VideoService {
 
     await this.videoShareRepository.deleteByVideoId(videoId);
 
+    const remotePrefix = `videos/${videoId}`;
+    if (this.objectStorage.isConfigured()) {
+      try {
+        await this.objectStorage.deleteByPrefix(remotePrefix);
+      } catch {
+        // Keep deletion robust; continue local/DB cleanup.
+      }
+    }
+
     // Remove processed folder and legacy single-file storage paths.
     const candidates = new Set<string>();
-    candidates.add(path.resolve(video.storagePath));
+    if (!video.storagePath.startsWith("videos/")) {
+      candidates.add(path.resolve(video.storagePath));
+    }
     for (const variant of video.variants ?? []) {
-      candidates.add(path.resolve(variant.storagePath));
+      if (!variant.storagePath.startsWith("videos/")) {
+        candidates.add(path.resolve(variant.storagePath));
+      }
     }
     candidates.add(path.resolve(path.join(VIDEO_STORAGE_DIR, videoId)));
 
@@ -176,12 +191,32 @@ export class VideoService {
       throw new HttpError(404, "Requested quality is not available");
     }
 
-    const fullPath = variant
-      ? path.resolve(variant.storagePath)
-      : path.resolve(video.storagePath);
+    const selectedPath = variant ? variant.storagePath : video.storagePath;
+    const mimeType = variant ? "video/mp4" : video.mimeType;
 
+    if (selectedPath.startsWith("videos/")) {
+      if (!this.objectStorage.isConfigured()) {
+        throw new HttpError(500, "Object storage is not configured");
+      }
+      let objectMeta;
+      try {
+        objectMeta = await this.objectStorage.statObject(selectedPath);
+      } catch {
+        throw new HttpError(404, "Video file not found");
+      }
+      return {
+        source: "object" as const,
+        objectKey: selectedPath,
+        fileSize: objectMeta.sizeBytes,
+        mimeType: objectMeta.contentType || mimeType,
+        quality,
+      };
+    }
+
+    const fullPath = path.resolve(selectedPath);
     const allowedRoot = path.resolve(VIDEO_STORAGE_DIR);
-    if (!fullPath.startsWith(allowedRoot)) {
+    const allowedTmp = path.resolve(UPLOAD_TMP_DIR);
+    if (!fullPath.startsWith(allowedRoot) && !fullPath.startsWith(allowedTmp)) {
       throw new HttpError(400, "Invalid video path");
     }
 
@@ -192,13 +227,23 @@ export class VideoService {
       throw new HttpError(404, "Video file not found");
     }
 
-    const mimeType = variant ? "video/mp4" : video.mimeType;
-
     return {
+      source: "local" as const,
       fullPath,
       fileSize: fileStat.size,
       mimeType,
       quality,
     };
+  }
+
+  async getObjectStreamPayload(objectKey: string, byteRange?: string) {
+    if (!this.objectStorage.isConfigured()) {
+      throw new HttpError(500, "Object storage is not configured");
+    }
+    try {
+      return await this.objectStorage.getObjectStream(objectKey, byteRange);
+    } catch {
+      throw new HttpError(404, "Video file not found");
+    }
   }
 }

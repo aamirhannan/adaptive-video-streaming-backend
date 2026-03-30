@@ -1,11 +1,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import multer from 'multer';
-import { VIDEO_STORAGE_DIR } from '../../config/storage.js';
+import { UPLOAD_TMP_DIR } from '../../config/storage.js';
 import { HttpError } from '../../utils/http-error.js';
 
 const allowedMimeTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'];
-const maxFileSize = 200 * 1024 * 1024;
+export const maxFileSize = 20 * 1024 * 1024;
 
 export const isAllowedVideoMimeType = (mimeType: string): boolean => {
   return allowedMimeTypes.includes(mimeType);
@@ -14,10 +14,10 @@ export const isAllowedVideoMimeType = (mimeType: string): boolean => {
 const storage = multer.diskStorage({
   destination: async (_req, _file, cb) => {
     try {
-      await fs.mkdir(VIDEO_STORAGE_DIR, { recursive: true });
-      cb(null, VIDEO_STORAGE_DIR);
+      await fs.mkdir(UPLOAD_TMP_DIR, { recursive: true });
+      cb(null, UPLOAD_TMP_DIR);
     } catch (error) {
-      cb(error as Error, VIDEO_STORAGE_DIR);
+      cb(error as Error, UPLOAD_TMP_DIR);
     }
   },
   filename: (_req, file, cb) => {

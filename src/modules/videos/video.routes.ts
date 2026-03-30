@@ -7,6 +7,7 @@ import {
 import { requireRoles } from "../../middleware/role-middleware.js";
 import { UserRepository } from "../users/user.repository.js";
 import { VideoController } from "./video.controller.js";
+import { ObjectStorageService } from "./object-storage.js";
 import { VideoProcessingService } from "./video.processing.js";
 import { VideoRepository } from "./video.repository.js";
 import { VideoService } from "./video.service.js";
@@ -19,14 +20,17 @@ export const createVideoRouter = (io: SocketServer) => {
   const videoRepository = new VideoRepository();
   const videoShareRepository = new VideoShareRepository();
   const userRepository = new UserRepository();
+  const objectStorage = new ObjectStorageService();
   const videoProcessingService = new VideoProcessingService(
     videoRepository,
     io,
+    objectStorage,
   );
   const videoService = new VideoService(
     videoRepository,
     videoProcessingService,
     videoShareRepository,
+    objectStorage,
   );
   const videoShareService = new VideoShareService(
     videoRepository,

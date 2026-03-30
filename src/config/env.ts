@@ -15,4 +15,11 @@ export const env = {
   mongoUri: process.env.MONGO_URI as string,
   jwtSecret: process.env.JWT_SECRET as string,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
+  tigris: {
+    endpoint: process.env.TIGRIS_ENDPOINT,
+    bucket: process.env.TIGRIS_BUCKET,
+    accessKeyId: process.env.TIGRIS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.TIGRIS_SECRET_ACCESS_KEY,
+    region: process.env.TIGRIS_REGION ?? 'auto',
+  },
 };
