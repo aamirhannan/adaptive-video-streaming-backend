@@ -37,6 +37,7 @@ Dependency direction:
 3. **Sensitivity** combines: dangerous filename keywords, missing video stream, very short duration, and high **blackdetect**-derived ratio from FFmpeg logs.
 4. **Transcoding**: three MP4 files `240.mp4`, `480.mp4`, `720.mp4` (H.264 + AAC, `+faststart` for streaming).
 5. Metadata (`variants`, `analysisSummary`) is stored on the `Video` document.
+6. Video owner metadata includes both `ownerUserId` and `ownerEmail` for easier frontend display and audit context.
 
 ## API (v1)
 
@@ -51,11 +52,12 @@ Dependency direction:
 - `POST /api/videos/upload` (roles: `editor`, `admin`; form-data field `video`)
 - `GET /api/videos` (roles: `viewer`, `editor`, `admin`; optional query `status`, `sensitivity`; returns **owned + shared-with-me** videos)
 - `GET /api/videos/:videoId` (**owner** or **shared viewer**)
-- `POST /api/videos/:videoId/shares` (roles: `editor`, `admin`; body `{ sharedWithUserId }` — target must be **viewer**; editor may share only their own videos)
+- `POST /api/videos/:videoId/shares` (roles: `editor`, `admin`; body accepts `sharedWith` as **userId or email**; legacy `sharedWithUserId` and `sharedWithEmail` are also accepted; target must be **viewer**; editor may share only their own videos)
 - `GET /api/videos/:videoId/shares` (roles: `editor`, `admin`; list assignments for a video)
 - `DELETE /api/videos/:videoId/shares/:shareId` (roles: `editor`, `admin`; revoke share)
 - `GET /api/videos/:videoId/stream?quality=240|480|720` (owner or shared user; default `720`; **Range** / 206 partial responses; auth via `Authorization` Bearer or `access_token` query for `<video src>`)
 - `PATCH /api/videos/:videoId/status` (role: `admin`)
+- `DELETE /api/videos/:videoId` (roles: `editor`, `admin`; editor can delete only own videos; removes video document, related shares, and stored files)
 
 ## Realtime events (Socket.io)
 
@@ -74,6 +76,7 @@ Server emits:
 - Processed files live under `storage/videos/<videoId>/`.
 - Legacy documents without `variants` fall back to streaming the original upload path.
 - Viewer role is blocked from streaming **flagged** videos.
+- Share assignment always resolves to a viewer account, looked up by either userId or email.
 - For production-grade moderation, replace heuristics with a dedicated model or human review; FFmpeg here provides signal + transcoding.
 
 ## Testing
